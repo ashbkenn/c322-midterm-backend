@@ -131,5 +131,62 @@ public class FileRepository {
         return image;
     }
 
+    public int addQuiz(Quiz quiz) throws IOException {
+        Path path = Paths.get(QUIZ_DATABASE_NAME);
+        List<Quiz> quizzes = findAllQuizzes();
+        int id = quizzes.stream().mapToInt(Quiz::getId).max().orElse(0) + 1;
+        quiz.setId(id);
+        String data = quiz.toLine(id);
+        appendToFile(path, data + NEW_LINE);
+        return id;
+    }
+
+    public List<Quiz> findAllQuizzes() throws IOException {
+        List<Quiz> result = new ArrayList<>();
+        Path path = Paths.get(QUIZ_DATABASE_NAME);
+        if (Files.exists(path)) {
+            List<String> lines = Files.readAllLines(path);
+            for (String line : lines) {
+                if (line.trim().length() != 0) {
+                    Quiz quiz = Quiz.fromLine(line);
+                    result.add(quiz);
+                }
+            }
+        }
+        return result;
+    }
+
+    public Quiz getQuiz(Integer id) throws IOException {
+        List<Quiz> quizzes = findAllQuizzes();
+        return quizzes.stream().filter(q -> q.getId().equals(id)).findFirst().orElse(null);
+    }
+
+    public boolean updateQuiz(int id, Quiz updatedQuiz) throws IOException {
+        List<Quiz> quizzes = findAllQuizzes();
+        for (int i = 0; i < quizzes.size(); i++) {
+            if (quizzes.get(i).getId() == id) {
+                if (updatedQuiz.getTitle() != null && !updatedQuiz.getTitle().isEmpty()) {
+                    quizzes.get(i).setTitle(updatedQuiz.getTitle());
+                }
+                if (updatedQuiz.getQuestionIds() != null && !updatedQuiz.getQuestionIds().isEmpty()) {
+                    quizzes.get(i).setQuestionIds(updatedQuiz.getQuestionIds());
+                }
+                // Now, overwrite the quiz database with the updated list
+                overwriteQuizDatabase(quizzes);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void overwriteQuizDatabase(List<Quiz> quizzes) throws IOException {
+        Path path = Paths.get(QUIZ_DATABASE_NAME);
+        // Clear the file first
+        Files.write(path, "".getBytes());
+        for (Quiz quiz : quizzes) {
+            String line = quiz.toLine(quiz.getId());
+            appendToFile(path, line + NEW_LINE);
+        }
+    }
 
 }
